@@ -2,10 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Product } from '../types';
 
 const fetchProductsFromGemini = async (query: string, latitude: number, longitude: number): Promise<Product[]> => {
-  if (!process.env.API_KEY) {
-    console.error("API_KEY environment variable not set.");
-    throw new Error("Ocorreu um problema de configuração que impede a busca. Por favor, tente novamente mais tarde.");
-  }
+  // The API key MUST be provided in the execution environment as process.env.API_KEY.
+  // The mock data fallback has been removed to ensure the app uses the live API as requested.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
@@ -57,6 +55,9 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
     });
 
     const jsonText = response.text.trim();
+     if (!jsonText) {
+        throw new Error("A API retornou uma resposta vazia.");
+    }
     const products: Product[] = JSON.parse(jsonText).map((p: any) => ({
         ...p,
         imageUrl: `https://picsum.photos/seed/${p.id}/400/400`
@@ -65,7 +66,8 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
     return products;
   } catch (error) {
     console.error("Error fetching data from Gemini API:", error);
-    throw new Error("Falha ao obter os dados dos produtos. Por favor, tente novamente.");
+    // This user-friendly message covers various issues like network errors or invalid API keys.
+    throw new Error("Não foi possível buscar as promoções. Verifique sua conexão ou tente novamente mais tarde.");
   }
 };
 
