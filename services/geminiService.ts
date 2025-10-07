@@ -4,7 +4,7 @@ import { Product } from '../types';
 const fetchProductsFromGemini = async (query: string, latitude: number, longitude: number): Promise<Product[]> => {
   if (!process.env.API_KEY) {
     console.error("API_KEY environment variable not set.");
-    throw new Error("API key is missing.");
+    throw new Error("Ocorreu um problema de configuração que impede a busca. Por favor, tente novamente mais tarde.");
   }
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -65,7 +65,7 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
     return products;
   } catch (error) {
     console.error("Error fetching data from Gemini API:", error);
-    throw new Error("Failed to get product data. Please try again.");
+    throw new Error("Falha ao obter os dados dos produtos. Por favor, tente novamente.");
   }
 };
 
