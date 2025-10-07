@@ -105,6 +105,24 @@ const fetchProductPricesFromGemini = async (productName: string, latitude: numbe
       contents: prompt,
       config: {
         tools: [{googleSearch: {}}],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              supermarket: { type: Type.STRING, description: "The supermarket's name." },
+              price: { type: Type.NUMBER, description: "The price in BRL." },
+              promotion: { type: Type.STRING, description: "An optional promotion (e.g., '2 por 1', '30% de desconto')." },
+              supermarketLogoUrl: { type: Type.STRING, description: "The URL for the supermarket's official logo." },
+              supermarketWebsite: { type: Type.STRING, description: "The URL for the supermarket's main website." },
+              productUrl: { type: Type.STRING, description: "A valid and accessible URL for the specific product page." },
+              address: { type: Type.STRING, description: "An approximate address for the specific supermarket branch." },
+              openingHours: { type: Type.STRING, description: "The opening hours for that branch if available." },
+            },
+            required: ['supermarket', 'price', 'supermarketLogoUrl', 'supermarketWebsite', 'productUrl'],
+          }
+        }
       },
     });
 
