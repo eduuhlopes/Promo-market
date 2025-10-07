@@ -2,9 +2,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Product } from '../types';
 
 const fetchProductsFromGemini = async (query: string, latitude: number, longitude: number): Promise<Product[]> => {
-  // The API key MUST be provided in the execution environment as process.env.API_KEY.
-  // The mock data fallback has been removed to ensure the app uses the live API as requested.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // In a real-world application, the API key should be stored securely and not hardcoded.
+  // For this environment, we are using the provided key directly to ensure functionality.
+  const apiKey = "AIzaSyBnMXKvxMnQ7vByvyjhAwuLgT4Rjj2Y4NM";
+  if (!apiKey) {
+    throw new Error("API key is not configured. Please ensure it is set correctly.");
+  }
+  const ai = new GoogleGenAI({ apiKey: apiKey });
 
   const prompt = `
     Act as a local supermarket price comparison API. The user is located at latitude: ${latitude}, longitude: ${longitude}.
