@@ -12,7 +12,8 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
 
   const prompt = `
     Act as a local supermarket price comparison API. The user is located at latitude: ${latitude}, longitude: ${longitude}.
-    Based on the user's search query for "${query}", generate a realistic list of 5 to 7 products available in **real, well-known supermarkets near this location** in Brazil (e.g., Carrefour, Pão de Açúcar, Extra, Assaí Atacadista, Dia).
+    Based on the user's search query for "${query}", **use Google Search to find real, currently available products** in well-known supermarkets near this location in Brazil (e.g., Carrefour, Pão de Açúcar, Extra, Assaí Atacadista, Dia).
+    Generate a realistic list of 5 to 7 products.
     For each product, provide:
     - A unique ID (e.g., a short hash).
     - The product name.
@@ -24,9 +25,10 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
         - An optional promotion (e.g., "2 por 1", "30% de desconto"). At least a third of the products should have a promotion.
         - The URL for the supermarket's official logo (supermarketLogoUrl).
         - The URL for the supermarket's main website (supermarketWebsite).
-        - The specific URL for the product page on the supermarket's website (productUrl).
+        - **A valid and accessible URL for the specific product page on the supermarket's website (productUrl). This must be a direct link to the product, found via search.**
+        - An approximate address for the specific supermarket branch found (address).
+        - The opening hours for that branch if available (openingHours, e.g., "Seg-Sáb: 08:00 - 22:00").
     - All prices should be realistic for the current market.
-    - Ensure the data is varied and makes sense for a grocery app.
     - The product names, categories, and promotions should be in Portuguese.
   `;
 
@@ -35,42 +37,23 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              name: { type: Type.STRING },
-              category: { type: Type.STRING },
-              imageUrl: { type: Type.STRING },
-              prices: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    supermarket: { type: Type.STRING },
-                    price: { type: Type.NUMBER },
-                    promotion: { type: Type.STRING, nullable: true },
-                    supermarketLogoUrl: { type: Type.STRING },
-                    supermarketWebsite: { type: Type.STRING },
-                    productUrl: { type: Type.STRING },
-                  },
-                  required: ["supermarket", "price", "supermarketLogoUrl", "supermarketWebsite", "productUrl"],
-                },
-              },
-            },
-            required: ["id", "name", "category", "prices"],
-          },
-        },
+        // By adding the googleSearch tool, Gemini can ground its response in real-time web results,
+        // ensuring the product URLs are valid and not hallucinated.
+        tools: [{googleSearch: {}}],
       },
     });
 
-    const jsonText = response.text.trim();
-     if (!jsonText) {
+    let jsonText = response.text.trim();
+    if (!jsonText) {
         throw new Error("A API retornou uma resposta vazia.");
     }
+    // Clean potential markdown formatting from the response
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.substring(7, jsonText.length - 3).trim();
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.substring(3, jsonText.length - 3).trim();
+    }
+    
     const products: Product[] = JSON.parse(jsonText).map((p: any) => ({
         ...p,
         imageUrl: `https://picsum.photos/seed/${p.id}/400/400`

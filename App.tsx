@@ -6,6 +6,7 @@ import ProductCard from './components/ProductCard';
 import BottomNav from './components/BottomNav';
 import ShoppingList from './components/ShoppingList';
 import SkeletonCard from './components/SkeletonCard';
+import SupermarketInfoModal from './components/SupermarketInfoModal';
 
 interface ShoppingListItem {
     product: Product;
@@ -21,6 +22,7 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(View.SEARCH);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [modalInfo, setModalInfo] = useState<ProductPrice | null>(null);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -31,6 +33,14 @@ const App: React.FC = () => {
 
   const handleToggleExpand = (productId: string) => {
     setExpandedProductId(prevId => (prevId === productId ? null : productId));
+  };
+  
+  const handleOpenModal = (info: ProductPrice) => {
+    setModalInfo(info);
+  };
+  
+  const handleCloseModal = () => {
+    setModalInfo(null);
   };
 
   const handleSearch = useCallback(async (query: string) => {
@@ -123,6 +133,7 @@ const App: React.FC = () => {
                 onAddItem={handleAddItem}
                 isExpanded={expandedProductId === product.id}
                 onToggleExpand={() => handleToggleExpand(product.id)}
+                onOpenModal={handleOpenModal}
               />
             ))}
           </div>
@@ -157,6 +168,8 @@ const App: React.FC = () => {
           {toastMessage}
         </div>
       )}
+
+      {modalInfo && <SupermarketInfoModal info={modalInfo} onClose={handleCloseModal} />}
 
       <BottomNav activeView={activeView} onNavigate={setActiveView} listCount={shoppingList.length} />
     </div>

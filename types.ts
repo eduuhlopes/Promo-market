@@ -5,6 +5,8 @@ export interface ProductPrice {
   supermarketLogoUrl: string;
   supermarketWebsite: string;
   productUrl: string;
+  address?: string;
+  openingHours?: string;
 }
 
 export interface Product {

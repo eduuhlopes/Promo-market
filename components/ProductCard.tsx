@@ -1,15 +1,17 @@
 import React, { useMemo } from 'react';
 import { Product, ProductPrice } from '../types';
 import PlusIcon from './icons/PlusIcon';
+import InfoIcon from './icons/InfoIcon';
 
 interface ProductCardProps {
   product: Product;
   onAddItem: (product: Product, price: ProductPrice) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onOpenModal: (info: ProductPrice) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand, onOpenModal }) => {
   const bestPriceInfo = useMemo(() => {
     if (!product.prices || product.prices.length === 0) {
       return null;
@@ -70,9 +72,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpande
                     >
                     <img src={priceInfo.supermarketLogoUrl} alt={priceInfo.supermarket} className="w-10 h-10 object-contain rounded-full mr-4 bg-white shadow-sm" />
                     <div className="flex-grow">
-                        <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
-                        {priceInfo.supermarket}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                            <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
+                            {priceInfo.supermarket}
+                            </p>
+                            <button 
+                                onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenModal(priceInfo);
+                                }}
+                                className="text-gray-400 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full transition-colors"
+                                aria-label={`Ver informações de ${priceInfo.supermarket}`}
+                            >
+                                <InfoIcon className="w-5 h-5" />
+                            </button>
+                        </div>
                         {priceInfo.promotion && (
                         <p className="text-sm text-red-600 font-bold">{priceInfo.promotion}</p>
                         )}
