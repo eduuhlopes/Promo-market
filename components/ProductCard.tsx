@@ -9,9 +9,10 @@ interface ProductCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onOpenModal: (info: ProductPrice) => void;
+  isDetailsLoading: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand, onOpenModal }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand, onOpenModal, isDetailsLoading }) => {
   const bestPriceInfo = useMemo(() => {
     if (!product.prices || product.prices.length === 0) {
       return null;
@@ -34,6 +35,72 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpande
       e.stopPropagation();
   };
 
+  const renderExpandedContent = () => {
+    if (isDetailsLoading) {
+      return (
+        <div className="flex items-center justify-center p-6 text-gray-500">
+          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Buscando preços...
+        </div>
+      );
+    }
+
+    if (!product.prices || product.prices.length === 0) {
+      return <p className="p-4 text-center text-gray-500">Nenhum preço encontrado para este produto.</p>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {product.prices.sort((a, b) => a.price - b.price).map((priceInfo) => (
+          <div 
+            key={priceInfo.supermarket} 
+            onClick={() => handleGoToSite(priceInfo.productUrl, priceInfo.supermarket)}
+            className={`flex items-center p-3 rounded-lg transition-all duration-300 cursor-pointer ${priceInfo === bestPriceInfo ? 'bg-green-100 border-2 border-green-500 hover:bg-green-200' : 'bg-gray-50 hover:bg-gray-100'}`}
+          >
+            <img src={priceInfo.supermarketLogoUrl} alt={priceInfo.supermarket} className="w-10 h-10 object-contain rounded-full mr-4 bg-white shadow-sm" />
+            <div className="flex-grow">
+                <div className="flex items-center gap-1.5">
+                    <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
+                    {priceInfo.supermarket}
+                    </p>
+                    <button 
+                        onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenModal(priceInfo);
+                        }}
+                        className="text-gray-400 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full transition-colors"
+                        aria-label={`Ver informações de ${priceInfo.supermarket}`}
+                    >
+                        <InfoIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                {priceInfo.promotion && (
+                <p className="text-sm text-red-600 font-bold">{priceInfo.promotion}</p>
+                )}
+            </div>
+            <div className="text-right mx-2 sm:mx-4">
+                <p className={`text-lg font-bold ${priceInfo === bestPriceInfo ? 'text-green-600' : 'text-gray-800'}`}>
+                R$ {priceInfo.price.toFixed(2)}
+                </p>
+            </div>
+            <button 
+                onClick={(e) => {
+                e.stopPropagation();
+                onAddItem(product, priceInfo);
+                }}
+                className="ml-2 flex-shrink-0 bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110">
+                <PlusIcon className="w-5 h-5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+
   return (
     <div 
         className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ease-in-out transform hover:scale-105"
@@ -51,10 +118,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpande
       </div>
       <div className="p-4 cursor-pointer">
         <h3 className="text-xl font-bold text-gray-800 truncate">{product.name}</h3>
-        {!isExpanded && bestPriceInfo && (
+        {!isExpanded && (
             <div className="mt-2 flex justify-between items-center">
-                <p className="text-sm text-gray-600 font-medium">A partir de</p>
-                <p className="text-2xl font-bold text-green-600">R$ {bestPriceInfo.price.toFixed(2)}</p>
+                <p className="text-sm text-gray-600 font-medium">Ver Preços</p>
+                <i className="fa-solid fa-chevron-down text-gray-400"></i>
             </div>
         )}
       </div>
@@ -63,50 +130,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpande
         <div className="px-4 pb-4" onClick={handleContentClick}>
             <div className="border-t pt-4">
                  <h4 className="text-sm font-semibold text-gray-500 mb-2">Comparar preços:</h4>
-                <div className="space-y-2">
-                {product.prices.sort((a, b) => a.price - b.price).map((priceInfo) => (
-                    <div 
-                    key={priceInfo.supermarket} 
-                    onClick={() => handleGoToSite(priceInfo.productUrl, priceInfo.supermarket)}
-                    className={`flex items-center p-3 rounded-lg transition-all duration-300 cursor-pointer ${priceInfo === bestPriceInfo ? 'bg-green-100 border-2 border-green-500 hover:bg-green-200' : 'bg-gray-50 hover:bg-gray-100'}`}
-                    >
-                    <img src={priceInfo.supermarketLogoUrl} alt={priceInfo.supermarket} className="w-10 h-10 object-contain rounded-full mr-4 bg-white shadow-sm" />
-                    <div className="flex-grow">
-                        <div className="flex items-center gap-1.5">
-                            <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
-                            {priceInfo.supermarket}
-                            </p>
-                            <button 
-                                onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenModal(priceInfo);
-                                }}
-                                className="text-gray-400 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full transition-colors"
-                                aria-label={`Ver informações de ${priceInfo.supermarket}`}
-                            >
-                                <InfoIcon className="w-5 h-5" />
-                            </button>
-                        </div>
-                        {priceInfo.promotion && (
-                        <p className="text-sm text-red-600 font-bold">{priceInfo.promotion}</p>
-                        )}
-                    </div>
-                    <div className="text-right mx-2 sm:mx-4">
-                        <p className={`text-lg font-bold ${priceInfo === bestPriceInfo ? 'text-green-600' : 'text-gray-800'}`}>
-                        R$ {priceInfo.price.toFixed(2)}
-                        </p>
-                    </div>
-                    <button 
-                        onClick={(e) => {
-                        e.stopPropagation();
-                        onAddItem(product, priceInfo);
-                        }}
-                        className="ml-2 flex-shrink-0 bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110">
-                        <PlusIcon className="w-5 h-5" />
-                    </button>
-                    </div>
-                ))}
-                </div>
+                 {renderExpandedContent()}
             </div>
         </div>
       </div>

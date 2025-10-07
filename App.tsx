@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Product, ProductPrice, View } from './types';
-import { fetchProductsFromGemini } from './services/geminiService';
+import { fetchProductsFromGemini, fetchProductPricesFromGemini } from './services/geminiService';
 import SearchBar from './components/SearchBar';
 import ProductCard from './components/ProductCard';
 import BottomNav from './components/BottomNav';
@@ -17,22 +17,20 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>(View.SEARCH);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [modalInfo, setModalInfo] = useState<ProductPrice | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
-  };
-
-  const handleToggleExpand = (productId: string) => {
-    setExpandedProductId(prevId => (prevId === productId ? null : productId));
   };
   
   const handleOpenModal = (info: ProductPrice) => {
@@ -43,60 +41,103 @@ const App: React.FC = () => {
     setModalInfo(null);
   };
 
+  const getLocation = useCallback((): Promise<{ lat: number; lon: number }> => {
+    return new Promise((resolve, reject) => {
+      // Return cached location if available
+      if (userLocation) {
+        resolve(userLocation);
+        return;
+      }
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocalização não é suportada por este navegador."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          };
+          setUserLocation(location); // Cache location
+          resolve(location);
+        },
+        (err) => {
+          let message = "Ocorreu um erro desconhecido ao obter a localização.";
+          switch (err.code) {
+            case err.PERMISSION_DENIED:
+              message = "Você negou o acesso à localização. Habilite para buscar por supermercados próximos.";
+              break;
+            case err.POSITION_UNAVAILABLE:
+              message = "Informações de localização não estão disponíveis.";
+              break;
+            case err.TIMEOUT:
+              message = "A requisição para obter a localização expirou.";
+              break;
+          }
+          setLocationError(message);
+          reject(new Error(message));
+        }
+      );
+    });
+  }, [userLocation]);
+
+  const handleFetchProductDetails = useCallback(async (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product || product.prices.length > 0) return; // Don't re-fetch
+
+    setDetailsLoadingId(productId);
+    setError(null);
+
+    try {
+      const { lat, lon } = await getLocation();
+      const prices = await fetchProductPricesFromGemini(product.name, lat, lon);
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === productId ? { ...p, prices } : p
+        )
+      );
+    } catch (err: any) {
+        setError(`Não foi possível carregar os preços para ${product.name}.`);
+        // Optionally clear prices to allow a retry
+        setProducts(prevProducts =>
+            prevProducts.map(p =>
+            p.id === productId ? { ...p, prices: [] } : p
+            )
+        );
+    } finally {
+        setDetailsLoadingId(null);
+    }
+  }, [products, getLocation]);
+  
+  const handleToggleExpand = (productId: string) => {
+    const newExpandedId = expandedProductId === productId ? null : productId;
+    setExpandedProductId(newExpandedId);
+    if (newExpandedId) {
+      handleFetchProductDetails(productId);
+    }
+  };
+
+
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
     setError(null);
     setLocationError(null);
     setProducts([]);
-    setExpandedProductId(null); // Reset expanded card on new search
-
-    const getLocation = (): Promise<{ lat: number; lon: number }> => {
-      return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error("Geolocalização não é suportada por este navegador."));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            resolve({
-              lat: position.coords.latitude,
-              lon: position.coords.longitude,
-            });
-          },
-          (err) => {
-            switch (err.code) {
-              case err.PERMISSION_DENIED:
-                reject(new Error("Você negou o acesso à localização. Habilite para buscar por supermercados próximos."));
-                break;
-              case err.POSITION_UNAVAILABLE:
-                reject(new Error("Informações de localização não estão disponíveis."));
-                break;
-              case err.TIMEOUT:
-                reject(new Error("A requisição para obter a localização expirou."));
-                break;
-              default:
-                reject(new Error("Ocorreu um erro desconhecido ao obter a localização."));
-                break;
-            }
-          }
-        );
-      });
-    };
+    setExpandedProductId(null);
 
     try {
-      const { lat, lon } = await getLocation();
-      const results = await fetchProductsFromGemini(query, lat, lon);
+      // Ensure we have location permission before showing results
+      await getLocation();
+      const results = await fetchProductsFromGemini(query);
       setProducts(results);
     } catch (err: any) {
-      if (err.message.includes("localização") || err.message.includes("Geolocalização")) {
-        setLocationError(err.message);
-      } else {
-        setError(err.message || 'Ocorreu um erro inesperado.');
+      if (!err.message.includes("localização")) {
+         setError(err.message || 'Ocorreu um erro inesperado.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [getLocation]);
 
   const handleAddItem = (product: Product, price: ProductPrice) => {
     setShoppingList(prevList => [...prevList, { product, price }]);
@@ -134,6 +175,7 @@ const App: React.FC = () => {
                 isExpanded={expandedProductId === product.id}
                 onToggleExpand={() => handleToggleExpand(product.id)}
                 onOpenModal={handleOpenModal}
+                isDetailsLoading={detailsLoadingId === product.id}
               />
             ))}
           </div>
