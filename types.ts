@@ -1,0 +1,19 @@
+
+export interface ProductPrice {
+  supermarket: string;
+  price: number;
+  promotion: string | null;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  imageUrl: string;
+  prices: ProductPrice[];
+}
+
+export enum View {
+  SEARCH = 'SEARCH',
+  LIST = 'LIST',
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Supermarket Promo Finder",
+  "description": "An application to search for promotions and compare supermarket prices, powered by Gemini. Find the best deals on your favorite products and create your shopping list.",
+  "requestFramePermissions": []
+}
