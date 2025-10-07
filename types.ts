@@ -1,10 +1,10 @@
-
 export interface ProductPrice {
   supermarket: string;
   price: number;
   promotion: string | null;
   supermarketLogoUrl: string;
   supermarketWebsite: string;
+  productUrl: string;
 }
 
 export interface Product {

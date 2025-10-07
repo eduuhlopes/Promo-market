@@ -5,9 +5,11 @@ import PlusIcon from './icons/PlusIcon';
 interface ProductCardProps {
   product: Product;
   onAddItem: (product: Product, price: ProductPrice) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand }) => {
   const bestPriceInfo = useMemo(() => {
     if (!product.prices || product.prices.length === 0) {
       return null;
@@ -16,14 +18,26 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem }) => {
   }, [product.prices]);
 
   const handleGoToSite = (url: string, supermarketName: string) => {
-    if (window.confirm(`Você será redirecionado para o site do ${supermarketName}. Deseja continuar?`)) {
+    if (window.confirm(`Você será redirecionado para a página do produto no site do ${supermarketName}. Deseja continuar?`)) {
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleExpand();
+  };
+  
+  const handleContentClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 ease-in-out">
-      <div className="relative">
+    <div 
+        className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ease-in-out transform hover:scale-105"
+        onClick={handleCardClick}
+    >
+      <div className="relative cursor-pointer">
         <img src={product.imageUrl} alt={product.name} className="w-full h-48 object-cover" />
         <span className="absolute top-2 left-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full">{product.category}</span>
         {bestPriceInfo?.promotion && (
@@ -33,40 +47,53 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem }) => {
           </div>
         )}
       </div>
-      <div className="p-4">
+      <div className="p-4 cursor-pointer">
         <h3 className="text-xl font-bold text-gray-800 truncate">{product.name}</h3>
-        
-        <div className="mt-4 space-y-2">
-          {product.prices.sort((a, b) => a.price - b.price).map((priceInfo) => (
-            <div 
-              key={priceInfo.supermarket} 
-              onClick={() => handleGoToSite(priceInfo.supermarketWebsite, priceInfo.supermarket)}
-              className={`flex items-center p-3 rounded-lg transition-all duration-300 cursor-pointer ${priceInfo === bestPriceInfo ? 'bg-green-100 border-2 border-green-500 hover:bg-green-200' : 'bg-gray-50 hover:bg-gray-100'}`}
-            >
-              <img src={priceInfo.supermarketLogoUrl} alt={priceInfo.supermarket} className="w-10 h-10 object-contain rounded-full mr-4 bg-white shadow-sm" />
-              <div className="flex-grow">
-                <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
-                  {priceInfo.supermarket}
-                </p>
-                {priceInfo.promotion && (
-                  <p className="text-sm text-red-600 font-bold">{priceInfo.promotion}</p>
-                )}
-              </div>
-              <div className="text-right mx-2 sm:mx-4">
-                <p className={`text-lg font-bold ${priceInfo === bestPriceInfo ? 'text-green-600' : 'text-gray-800'}`}>
-                  R$ {priceInfo.price.toFixed(2)}
-                </p>
-              </div>
-               <button 
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   onAddItem(product, priceInfo);
-                 }}
-                 className="ml-2 flex-shrink-0 bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110">
-                 <PlusIcon className="w-5 h-5" />
-               </button>
+        {!isExpanded && bestPriceInfo && (
+            <div className="mt-2 flex justify-between items-center">
+                <p className="text-sm text-gray-600 font-medium">A partir de</p>
+                <p className="text-2xl font-bold text-green-600">R$ {bestPriceInfo.price.toFixed(2)}</p>
             </div>
-          ))}
+        )}
+      </div>
+
+      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="px-4 pb-4" onClick={handleContentClick}>
+            <div className="border-t pt-4">
+                 <h4 className="text-sm font-semibold text-gray-500 mb-2">Comparar preços:</h4>
+                <div className="space-y-2">
+                {product.prices.sort((a, b) => a.price - b.price).map((priceInfo) => (
+                    <div 
+                    key={priceInfo.supermarket} 
+                    onClick={() => handleGoToSite(priceInfo.productUrl, priceInfo.supermarket)}
+                    className={`flex items-center p-3 rounded-lg transition-all duration-300 cursor-pointer ${priceInfo === bestPriceInfo ? 'bg-green-100 border-2 border-green-500 hover:bg-green-200' : 'bg-gray-50 hover:bg-gray-100'}`}
+                    >
+                    <img src={priceInfo.supermarketLogoUrl} alt={priceInfo.supermarket} className="w-10 h-10 object-contain rounded-full mr-4 bg-white shadow-sm" />
+                    <div className="flex-grow">
+                        <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
+                        {priceInfo.supermarket}
+                        </p>
+                        {priceInfo.promotion && (
+                        <p className="text-sm text-red-600 font-bold">{priceInfo.promotion}</p>
+                        )}
+                    </div>
+                    <div className="text-right mx-2 sm:mx-4">
+                        <p className={`text-lg font-bold ${priceInfo === bestPriceInfo ? 'text-green-600' : 'text-gray-800'}`}>
+                        R$ {priceInfo.price.toFixed(2)}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={(e) => {
+                        e.stopPropagation();
+                        onAddItem(product, priceInfo);
+                        }}
+                        className="ml-2 flex-shrink-0 bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110">
+                        <PlusIcon className="w-5 h-5" />
+                    </button>
+                    </div>
+                ))}
+                </div>
+            </div>
         </div>
       </div>
     </div>

@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>(View.SEARCH);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -28,11 +29,16 @@ const App: React.FC = () => {
     }, 3000);
   };
 
+  const handleToggleExpand = (productId: string) => {
+    setExpandedProductId(prevId => (prevId === productId ? null : productId));
+  };
+
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
     setError(null);
     setLocationError(null);
     setProducts([]);
+    setExpandedProductId(null); // Reset expanded card on new search
 
     const getLocation = (): Promise<{ lat: number; lon: number }> => {
       return new Promise((resolve, reject) => {
@@ -111,7 +117,13 @@ const App: React.FC = () => {
         ) : products.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} onAddItem={handleAddItem} />
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onAddItem={handleAddItem}
+                isExpanded={expandedProductId === product.id}
+                onToggleExpand={() => handleToggleExpand(product.id)}
+              />
             ))}
           </div>
         ) : (

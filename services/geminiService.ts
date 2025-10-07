@@ -24,6 +24,7 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
         - An optional promotion (e.g., "2 por 1", "30% de desconto"). At least a third of the products should have a promotion.
         - The URL for the supermarket's official logo (supermarketLogoUrl).
         - The URL for the supermarket's main website (supermarketWebsite).
+        - The specific URL for the product page on the supermarket's website (productUrl).
     - All prices should be realistic for the current market.
     - Ensure the data is varied and makes sense for a grocery app.
     - The product names, categories, and promotions should be in Portuguese.
@@ -54,8 +55,9 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
                     promotion: { type: Type.STRING, nullable: true },
                     supermarketLogoUrl: { type: Type.STRING },
                     supermarketWebsite: { type: Type.STRING },
+                    productUrl: { type: Type.STRING },
                   },
-                  required: ["supermarket", "price", "supermarketLogoUrl", "supermarketWebsite"],
+                  required: ["supermarket", "price", "supermarketLogoUrl", "supermarketWebsite", "productUrl"],
                 },
               },
             },
