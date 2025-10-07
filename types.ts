@@ -3,6 +3,8 @@ export interface ProductPrice {
   supermarket: string;
   price: number;
   promotion: string | null;
+  supermarketLogoUrl: string;
+  supermarketWebsite: string;
 }
 
 export interface Product {

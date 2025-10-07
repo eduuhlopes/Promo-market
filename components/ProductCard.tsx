@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Product, ProductPrice } from '../types';
 import PlusIcon from './icons/PlusIcon';
@@ -15,6 +14,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem }) => {
     }
     return product.prices.reduce((min, p) => (p.price < min.price ? p : min), product.prices[0]);
   }, [product.prices]);
+
+  const handleGoToSite = (url: string, supermarketName: string) => {
+    if (window.confirm(`Você será redirecionado para o site do ${supermarketName}. Deseja continuar?`)) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 ease-in-out">
@@ -33,8 +38,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem }) => {
         
         <div className="mt-4 space-y-2">
           {product.prices.sort((a, b) => a.price - b.price).map((priceInfo) => (
-            <div key={priceInfo.supermarket} className={`flex justify-between items-center p-3 rounded-lg transition-all duration-300 ${priceInfo === bestPriceInfo ? 'bg-green-100 border-2 border-green-500' : 'bg-gray-50'}`}>
-              <div>
+            <div 
+              key={priceInfo.supermarket} 
+              onClick={() => handleGoToSite(priceInfo.supermarketWebsite, priceInfo.supermarket)}
+              className={`flex items-center p-3 rounded-lg transition-all duration-300 cursor-pointer ${priceInfo === bestPriceInfo ? 'bg-green-100 border-2 border-green-500 hover:bg-green-200' : 'bg-gray-50 hover:bg-gray-100'}`}
+            >
+              <img src={priceInfo.supermarketLogoUrl} alt={priceInfo.supermarket} className="w-10 h-10 object-contain rounded-full mr-4 bg-white shadow-sm" />
+              <div className="flex-grow">
                 <p className={`font-semibold ${priceInfo === bestPriceInfo ? 'text-green-800' : 'text-gray-600'}`}>
                   {priceInfo.supermarket}
                 </p>
@@ -42,13 +52,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem }) => {
                   <p className="text-sm text-red-600 font-bold">{priceInfo.promotion}</p>
                 )}
               </div>
-              <div className="text-right">
+              <div className="text-right mx-2 sm:mx-4">
                 <p className={`text-lg font-bold ${priceInfo === bestPriceInfo ? 'text-green-600' : 'text-gray-800'}`}>
                   R$ {priceInfo.price.toFixed(2)}
                 </p>
               </div>
                <button 
-                 onClick={() => onAddItem(product, priceInfo)}
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onAddItem(product, priceInfo);
+                 }}
                  className="ml-2 flex-shrink-0 bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110">
                  <PlusIcon className="w-5 h-5" />
                </button>

@@ -18,8 +18,13 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
     - The product name.
     - A relevant category (e.g., 'Laticínios', 'Padaria', 'Hortifruti', 'Açougue', 'Mercearia').
     - An array of prices from 2-3 different real supermarkets found near the user's location.
-    - For some products, include a special promotion (e.g., "2 por 1", "30% de desconto", "Leve 3 Pague 2"). At least a third of the products should have a promotion.
-    - All prices should be in Brazilian Real (BRL) and be realistic for the current market.
+    - For each price entry, include:
+        - The supermarket's name.
+        - The price in BRL.
+        - An optional promotion (e.g., "2 por 1", "30% de desconto"). At least a third of the products should have a promotion.
+        - The URL for the supermarket's official logo (supermarketLogoUrl).
+        - The URL for the supermarket's main website (supermarketWebsite).
+    - All prices should be realistic for the current market.
     - Ensure the data is varied and makes sense for a grocery app.
     - The product names, categories, and promotions should be in Portuguese.
   `;
@@ -47,8 +52,10 @@ const fetchProductsFromGemini = async (query: string, latitude: number, longitud
                     supermarket: { type: Type.STRING },
                     price: { type: Type.NUMBER },
                     promotion: { type: Type.STRING, nullable: true },
+                    supermarketLogoUrl: { type: Type.STRING },
+                    supermarketWebsite: { type: Type.STRING },
                   },
-                  required: ["supermarket", "price"],
+                  required: ["supermarket", "price", "supermarketLogoUrl", "supermarketWebsite"],
                 },
               },
             },
