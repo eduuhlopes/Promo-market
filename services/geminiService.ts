@@ -110,47 +110,91 @@ const fetchProductsFromGemini = async (query: string): Promise<Product[]> => {
 
 /**
  * Step 2: Fetches detailed pricing information for a SINGLE product on demand.
- * This call is more intensive as it uses Google Search to find real-time, localized data.
+ * This function uses a robust two-step process for maximum accuracy:
+ * 1. An initial call uses Google Search to perform targeted research for live, verifiable data.
+ * 2. A second call parses that researched text into guaranteed, clean JSON.
  */
 const fetchProductPricesFromGemini = async (productName: string, latitude: number, longitude: number): Promise<ProductPrice[]> => {
-    const prompt = `
-    Act as a local supermarket price comparison API. The user is located at latitude: ${latitude}, longitude: ${longitude}.
-    The user wants to find prices for the product: "${productName}".
+    // Step 1: Use Google Search to get grounded, up-to-date information as text. This prompt is highly specific to ensure accuracy.
+    const searchPrompt = `
+    Act as an expert price comparison researcher for Brazilian supermarkets. Your task is to find the most accurate, up-to-date, and verifiable information for the product: "${productName}". The user's location (lat: ${latitude}, lon: ${longitude}) can help prioritize local availability on national e-commerce sites.
 
-    **Use Google Search to find real, currently available prices** for this specific product in well-known supermarkets near the user's location in Brazil (e.g., Carrefour, Pão de Açúcar, Extra, Assaí Atacadista, Dia).
-    
-    Generate an array of 2-3 price options from different real supermarkets.
-    For each price entry, provide:
-    - The supermarket's name.
-    - The price in BRL.
-    - An optional promotion (e.g., "2 por 1", "30% de desconto").
-    - The URL for the supermarket's official logo (supermarketLogoUrl).
-    - The URL for the supermarket's main website (supermarketWebsite).
-    - **A valid and accessible URL for the specific product page on the supermarket's website (productUrl). This must be a direct link to the product, found via search.**
-    - An approximate address for the specific supermarket branch found (address).
-    - The opening hours for that branch if available (openingHours, e.g., "Seg-Sáb: 08:00 - 22:00").
-    
-    All prices must be realistic for the current market. All text should be in Portuguese.
-    The response must be a JSON array of price objects.
+    Using Google Search, perform targeted searches on the OFFICIAL WEBSITES of major Brazilian e-commerce and supermarket retailers (e.g., Carrefour, Pão de Açúcar, Extra, Magazine Luiza, Americanas).
+
+    For each retailer where you find the product, provide a summary containing ONLY the following information:
+    - Supermarket Name: The name of the retailer.
+    - Exact Price: The current, live price in BRL, as a number (e.g., 24.99).
+    - Direct Product URL: The full, direct, and valid URL to the product's own page. This MUST NOT be a search result page, a category page, or the homepage.
+    - Promotion Details: Any specific promotion, like "50% de desconto na segunda unidade". If none, state "N/A".
+    - Supermarket Logo URL: A valid, public URL for a high-quality logo of the supermarket.
+    - Branch Address: The approximate physical address of a nearby branch, if available online.
+    - Opening Hours: The opening hours of that branch, if available online.
+
+    Present the results as a clear, plain-text list. Each retailer's entry should be distinct.
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const searchResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: prompt,
+      contents: searchPrompt,
       config: {
-        tools: [{googleSearch: {}}],
+        tools: [{ googleSearch: {} }],
       },
     });
 
-    const jsonText = cleanJson(response.text);
+    const groundedText = searchResponse.text;
+    if (!groundedText || groundedText.trim().length === 0) {
+      console.log(`No search results found for "${productName}".`);
+      return []; // No information found, which is a valid result.
+    }
+
+    // Step 2: Use a second, structured call to parse the researched text into clean JSON.
+    const extractionPrompt = `
+      Based *only* on the provided text context below, extract the supermarket price details into a JSON array.
+      Adhere strictly to the provided JSON schema. Do not invent, hallucinate, or infer any information not present in the text.
+      If the text contains no valid price information for a supermarket, return an empty array.
+
+      Context:
+      ---
+      ${groundedText}
+      ---
+    `;
+
+    const extractionResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: extractionPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              supermarket: { type: Type.STRING },
+              price: { type: Type.NUMBER },
+              promotion: { type: Type.STRING, nullable: true },
+              supermarketLogoUrl: { type: Type.STRING },
+              productUrl: { type: Type.STRING },
+              address: { type: Type.STRING, nullable: true },
+              openingHours: { type: Type.STRING, nullable: true },
+            },
+            required: ['supermarket', 'price', 'supermarketLogoUrl', 'productUrl']
+          }
+        }
+      },
+    });
+    
+    const jsonText = cleanJson(extractionResponse.text);
     if (!jsonText) {
-        // Return an empty array if no prices are found, which is a valid scenario.
         return [];
     }
     
-    const prices: ProductPrice[] = JSON.parse(jsonText);
+    // Final validation to filter out any entries that might have slipped through with invalid URLs
+    let prices: ProductPrice[] = JSON.parse(jsonText);
+    prices = prices.filter(p => p.productUrl && p.productUrl.startsWith('http'));
+
     return prices;
+
   } catch (error) {
     console.error(`Error fetching prices for "${productName}" from Gemini API:`, error);
     // Let the caller handle the error, so it can display a message in the specific card.
