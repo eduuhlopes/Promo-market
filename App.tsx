@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Product, ProductPrice, View } from './types';
-import { fetchProductsFromGemini, fetchProductPricesFromGemini } from './services/geminiService';
+import { fetchProductsFromGemini, fetchProductPricesFromGemini, generateProductImage } from './services/geminiService';
 import SearchBar from './components/SearchBar';
 import ProductCard from './components/ProductCard';
 import BottomNav from './components/BottomNav';
@@ -125,11 +125,30 @@ const App: React.FC = () => {
     setProducts([]);
     setExpandedProductId(null);
 
+    // This function will run in the background to fetch images without blocking the UI
+    const generateImagesForProducts = async (productsToUpdate: Product[]) => {
+        productsToUpdate.forEach(async (product) => {
+          try {
+            const imageUrl = await generateProductImage(product.name, product.category);
+            // Update the specific product in the state with the new image URL
+            setProducts(currentProducts =>
+              currentProducts.map(p =>
+                p.id === product.id ? { ...p, imageUrl } : p
+              )
+            );
+          } catch (err) {
+            console.error(`Failed to generate image for product ${product.id}:`, err);
+            // Optional: set a fallback image URL here if needed
+          }
+        });
+    };
+
     try {
       // Ensure we have location permission before showing results
       await getLocation();
       const results = await fetchProductsFromGemini(query);
-      setProducts(results);
+      setProducts(results); // Set products with empty imageUrl first for a quick response
+      generateImagesForProducts(results); // Start generating images in the background
     } catch (err: any) {
       if (!err.message.includes("localização")) {
          setError(err.message || 'Ocorreu um erro inesperado.');
@@ -142,6 +161,31 @@ const App: React.FC = () => {
   const handleAddItem = (product: Product, price: ProductPrice) => {
     setShoppingList(prevList => [...prevList, { product, price }]);
     showToast(`${product.name} adicionado à lista!`);
+  };
+
+  const handleShare = async (product: Product, price: ProductPrice) => {
+    const shareData = {
+      title: `Oferta: ${product.name}`,
+      text: `Olha essa promoção que encontrei no Promo Finder! ${product.name} por R$ ${price.price.toFixed(2)} no ${price.supermarket}.`,
+      url: price.productUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        showToast('Oferta compartilhada com sucesso!');
+      } catch (err) {
+        console.log('Share was cancelled or failed', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${shareData.text}\nConfira aqui: ${shareData.url}`);
+        showToast('Link da oferta copiado para a área de transferência!');
+      } catch (err) {
+        console.error('Failed to copy: ', err);
+        showToast('Não foi possível copiar o link.');
+      }
+    }
   };
   
   const handleClearList = () => {
@@ -172,6 +216,7 @@ const App: React.FC = () => {
                 key={product.id} 
                 product={product} 
                 onAddItem={handleAddItem}
+                onShare={handleShare}
                 isExpanded={expandedProductId === product.id}
                 onToggleExpand={() => handleToggleExpand(product.id)}
                 onOpenModal={handleOpenModal}

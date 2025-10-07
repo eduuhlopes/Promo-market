@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Product, ProductPrice } from '../types';
 import PlusIcon from './icons/PlusIcon';
 import InfoIcon from './icons/InfoIcon';
+import ShareIcon from './icons/ShareIcon';
 
 interface ProductCardProps {
   product: Product;
@@ -9,10 +10,11 @@ interface ProductCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onOpenModal: (info: ProductPrice) => void;
+  onShare: (product: Product, price: ProductPrice) => void;
   isDetailsLoading: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand, onOpenModal, isDetailsLoading }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpanded, onToggleExpand, onOpenModal, onShare, isDetailsLoading }) => {
   const bestPriceInfo = useMemo(() => {
     if (!product.prices || product.prices.length === 0) {
       return null;
@@ -86,14 +88,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpande
                 R$ {priceInfo.price.toFixed(2)}
                 </p>
             </div>
-            <button 
-                onClick={(e) => {
-                e.stopPropagation();
-                onAddItem(product, priceInfo);
-                }}
-                className="ml-2 flex-shrink-0 bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110">
-                <PlusIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center flex-shrink-0 gap-2">
+                <button 
+                    onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(product, priceInfo);
+                    }}
+                    className="bg-gray-200 text-gray-600 rounded-full h-8 w-8 flex items-center justify-center hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 hover:scale-110"
+                    aria-label={`Compartilhar oferta de ${product.name}`}
+                >
+                    <ShareIcon className="w-5 h-5" />
+                </button>
+                <button 
+                    onClick={(e) => {
+                    e.stopPropagation();
+                    onAddItem(product, priceInfo);
+                    }}
+                    className="bg-orange-500 text-white rounded-full h-8 w-8 flex items-center justify-center hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-transform duration-200 hover:scale-110"
+                    aria-label={`Adicionar ${product.name} à lista`}
+                >
+                    <PlusIcon className="w-5 h-5" />
+                </button>
+            </div>
           </div>
         ))}
       </div>
@@ -107,7 +123,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddItem, isExpande
         onClick={handleCardClick}
     >
       <div className="relative cursor-pointer">
-        <img src={product.imageUrl} alt={product.name} className="w-full h-48 object-cover" />
+        {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.name} className="w-full h-48 object-cover" />
+        ) : (
+            <div className="w-full h-48 bg-gray-200 animate-pulse flex items-center justify-center">
+                <i className="fa-solid fa-image text-4xl text-gray-400"></i>
+            </div>
+        )}
         <span className="absolute top-2 left-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full">{product.category}</span>
         {bestPriceInfo?.promotion && (
           <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider animate-pulse">
